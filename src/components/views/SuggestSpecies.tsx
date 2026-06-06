@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { CheckCircle2, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, Leaf } from 'lucide-react';
 import { Species, Category, NativeStatus } from '../../types';
 
 interface SuggestSpeciesProps {
-  onSubmit: (species: Omit<Species, 'id' | 'status' | 'createdAt'>) => void;
+  onSubmit: (species: Omit<Species, 'id' | 'status' | 'createdAt'>) => Promise<boolean>;
   existingNames: string[];
 }
 
@@ -31,7 +31,9 @@ export function SuggestSpecies({ onSubmit, existingNames }: SuggestSpeciesProps)
     { value: 'other', label: 'Other / Unsure' }
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -51,8 +53,19 @@ export function SuggestSpecies({ onSubmit, existingNames }: SuggestSpeciesProps)
       return;
     }
 
-    onSubmit(formData);
-    setIsSubmitted(true);
+    setIsSubmitting(true);
+    try {
+      const success = await onSubmit(formData);
+      if (success) {
+        setIsSubmitted(true);
+      } else {
+        setError('Network error: Unable to communicate with the server.');
+      }
+    } catch {
+      setError('An unexpected error occurred while submitting.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -94,12 +107,17 @@ export function SuggestSpecies({ onSubmit, existingNames }: SuggestSpeciesProps)
         </p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8 flex gap-3 text-sm text-blue-800">
-        <ShieldAlert className="h-5 w-5 text-blue-600 shrink-0" />
-        <p>
-          <strong>Moderation Notice:</strong> This is a curated list. Please provide accurate observations 
-          and try to include specific locations (e.g., "Central Texas" or "Appalachian Region").
-        </p>
+      <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-5 mb-8 flex gap-4 text-sm text-emerald-900 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+          <Leaf className="w-24 h-24" />
+        </div>
+        <Leaf className="h-5 w-5 text-emerald-600 shrink-0 relative z-10" />
+        <div className="relative z-10">
+          <h3 className="font-semibold mb-1 text-emerald-800">Community Moderation</h3>
+          <p className="text-emerald-700 leading-relaxed">
+            This list is curated to ensure high-quality information. Please provide accurate observations and include specific locations (e.g., "Central Texas" or "Appalachian Region"). Your entry will be reviewed before appearing on the public library.
+          </p>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden">
@@ -230,9 +248,10 @@ export function SuggestSpecies({ onSubmit, existingNames }: SuggestSpeciesProps)
         <div className="px-6 py-4 md:px-8 bg-stone-50 border-t border-stone-200 flex justify-end">
           <button
             type="submit"
-            className="px-6 py-2.5 bg-emerald-600 text-white font-medium text-sm rounded-md shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+            disabled={isSubmitting}
+            className={`px-6 py-2.5 text-white font-medium text-sm rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${isSubmitting ? 'bg-stone-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700'}`}
           >
-            Submit for Review
+            {isSubmitting ? 'Submitting...' : 'Submit for Review'}
           </button>
         </div>
       </form>

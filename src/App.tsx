@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Leaf, Menu, Library, PlusCircle, ShieldCheck, Lock } from 'lucide-react';
+import { Leaf, Menu, Library, PlusCircle, ShieldCheck, Lock, Info } from 'lucide-react';
 import { SpeciesDatabase } from './components/views/SpeciesDatabase';
 import { SuggestSpecies } from './components/views/SuggestSpecies';
 import { ModerationQueue } from './components/views/ModerationQueue';
+import { About } from './components/views/About';
 import { TermsOfService } from './components/views/TermsOfService';
 import { PrivacyPolicy } from './components/views/PrivacyPolicy';
 import { Disclaimer } from './components/views/Disclaimer';
 import { Species } from './types';
 
-type ViewState = 'database' | 'suggest' | 'admin' | 'terms' | 'privacy' | 'disclaimer';
+type ViewState = 'database' | 'suggest' | 'admin' | 'about' | 'terms' | 'privacy' | 'disclaimer';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewState>('database');
@@ -28,7 +29,22 @@ export default function App() {
       .catch(err => console.error('Failed to load species:', err));
   }, []);
 
-  const handleSuggest = async (newSpeciesData: Omit<Species, 'id' | 'status' | 'createdAt'>) => {
+  // Update document title based on view
+  useEffect(() => {
+    const baseTitle = 'Native Habitat | Rural Utility Cost';
+    const titles: Record<ViewState, string> = {
+      database: `Species Database - ${baseTitle}`,
+      suggest: `Suggest a Species - ${baseTitle}`,
+      admin: `Moderation - ${baseTitle}`,
+      about: `About - ${baseTitle}`,
+      terms: `Terms of Service - ${baseTitle}`,
+      privacy: `Privacy Policy - ${baseTitle}`,
+      disclaimer: `Disclaimer - ${baseTitle}`,
+    };
+    document.title = titles[currentView];
+  }, [currentView]);
+
+  const handleSuggest = async (newSpeciesData: Omit<Species, 'id' | 'status' | 'createdAt'>): Promise<boolean> => {
     try {
       const res = await fetch('/api/species', {
         method: 'POST',
@@ -38,11 +54,12 @@ export default function App() {
       if (res.ok) {
         const added = await res.json();
         setSpecies([...species, added]);
-      } else {
-        alert('Failed to submit species. Please try again.');
+        return true;
       }
+      return false;
     } catch (e) {
-      alert('Network error submitting species.');
+      console.error('Network error submitting species.', e);
+      return false;
     }
   };
 
@@ -111,6 +128,17 @@ export default function App() {
         Contribute
       </button>
       <button
+        onClick={() => { setCurrentView('about'); setIsMobileMenuOpen(false); }}
+        className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          currentView === 'about' 
+            ? 'bg-emerald-50 text-emerald-700' 
+            : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'
+        }`}
+      >
+        <Info className="h-4 w-4" />
+        About
+      </button>
+      <button
         onClick={() => { setCurrentView('admin'); setIsMobileMenuOpen(false); }}
         className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
           currentView === 'admin' 
@@ -172,10 +200,11 @@ export default function App() {
         )}
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         {currentView === 'database' && <SpeciesDatabase speciesList={species} />}
         {currentView === 'suggest' && <SuggestSpecies onSubmit={handleSuggest} existingNames={existingNames} />}
         {currentView === 'admin' && <ModerationQueue speciesList={species} onApprove={handleApprove} onReject={handleReject} />}
+        {currentView === 'about' && <About />}
         {currentView === 'terms' && <TermsOfService />}
         {currentView === 'privacy' && <PrivacyPolicy />}
         {currentView === 'disclaimer' && <Disclaimer />}
@@ -189,7 +218,8 @@ export default function App() {
               <span className="font-medium text-lg tracking-tight">Native Habitat</span>
             </div>
             
-            <div className="flex gap-6 text-sm text-stone-400">
+            <div className="flex flex-wrap gap-6 text-sm text-stone-400">
+              <button onClick={() => setCurrentView('about')} className="hover:text-stone-200 transition-colors">About</button>
               <button onClick={() => setCurrentView('terms')} className="hover:text-stone-200 transition-colors">Terms of Service</button>
               <button onClick={() => setCurrentView('privacy')} className="hover:text-stone-200 transition-colors">Privacy Policy</button>
               <button onClick={() => setCurrentView('disclaimer')} className="hover:text-stone-200 transition-colors">Disclaimer</button>
